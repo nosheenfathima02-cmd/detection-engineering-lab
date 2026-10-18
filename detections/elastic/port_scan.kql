@@ -1,0 +1,5 @@
+// Suricata 1000001 equivalent - internal port scan (T1046)
+// Create as a Threshold rule: group by source.ip, cardinality of destination.port >= 30 over 1 minute.
+event.category : "network" and event.action : ("connection_attempted" or "flow" or "network_flow")
+  and source.ip : "10.10.10.0/24"
+  and destination.ip : "10.10.10.0/24"

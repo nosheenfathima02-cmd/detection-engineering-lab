@@ -1,0 +1,36 @@
+title: PowerShell Launched With Encoded Command
+id: 0831a567-6f64-484d-a797-db500349d42a
+status: experimental
+description: |
+  Detects PowerShell started with a Base64-encoded command line, a common way to hide
+  download cradles and payloads from simple command-line inspection.
+references:
+  - https://attack.mitre.org/techniques/T1059/001/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.execution
+  - attack.t1059.001
+  - attack.defense-evasion
+  - attack.t1027
+logsource:
+  product: windows
+  category: process_creation   # Sysmon Event ID 1 or Security 4688 with command line
+detection:
+  selection_img:
+    - Image|endswith:
+        - '\powershell.exe'
+        - '\pwsh.exe'
+    - OriginalFileName:
+        - 'PowerShell.EXE'
+        - 'pwsh.dll'
+  selection_flag:
+    CommandLine|contains:
+      - ' -enc '
+      - ' -enco'
+      - ' -EncodedCommand'
+      - ' -ec '
+  condition: all of selection_*
+falsepositives:
+  - Management tools (SCCM, Intune scripts) that encode commands; baseline and allow-list by parent process
+level: medium

@@ -1,0 +1,45 @@
+# Custom Suricata rules for the detection lab.
+# Install: append to /var/lib/suricata/rules/local.rules (or add to suricata.yaml rule-files),
+#          then: sudo suricatasc -c reload-rules  (or restart suricata)
+# Validate: sudo suricata -T -c /etc/suricata/suricata.yaml
+# SIDs 1000001-1000099 are the local range reserved for this lab.
+# $HOME_NET and $EXTERNAL_NET come from suricata.yaml; set $HOME_NET to the lab subnets.
+
+# --- Reconnaissance -------------------------------------------------------
+# Horizontal scan: one source hits many hosts on the same port (SYN flood of new flows).
+alert tcp $HOME_NET any -> $HOME_NET any (msg:"LAB SCAN Possible TCP port scan from internal host"; \
+    flags:S,12; flow:not_established; \
+    threshold:type both, track by_src, count 30, seconds 60; \
+    classtype:attempted-recon; sid:1000001; rev:1; metadata:attack_target Network, mitre_technique_id T1046;)
+
+# --- C2 beaconing ---------------------------------------------------------
+# Repeated small outbound connections to one external host at a steady rate.
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg:"LAB C2 Possible beaconing - repeated outbound connections"; \
+    flow:to_server,established; \
+    threshold:type both, track by_src, count 20, seconds 300; \
+    classtype:trojan-activity; sid:1000010; rev:1; metadata:mitre_technique_id T1071_001;)
+
+# --- DNS tunnelling -------------------------------------------------------
+# Unusually long DNS query name (data smuggled in the subdomain).
+alert dns $HOME_NET any -> any any (msg:"LAB DNS Overlong query name - possible tunnelling"; \
+    dns.query; dns.query.length:>100; \
+    threshold:type threshold, track by_src, count 10, seconds 60; \
+    classtype:policy-violation; sid:1000020; rev:1; metadata:mitre_technique_id T1071_004;)
+
+# High rate of TXT-record lookups to one domain (common DNS-tunnel transport).
+alert dns $HOME_NET any -> any any (msg:"LAB DNS High rate of TXT queries - possible tunnelling"; \
+    dns.query; dns.opcode:0; \
+    threshold:type both, track by_src, count 50, seconds 60; \
+    classtype:policy-violation; sid:1000021; rev:1; metadata:mitre_technique_id T1048;)
+
+# --- Credential access over the wire -------------------------------------
+# Kerberos service ticket requested with RC4 (weak) - pairs with the host-based Kerberoasting rule.
+alert krb5 any any -> $HOME_NET 88 (msg:"LAB KRB RC4 service ticket requested (Kerberoasting on the wire)"; \
+    krb5.weak_encryption; \
+    classtype:attempted-recon; sid:1000030; rev:1; metadata:mitre_technique_id T1558_003;)
+
+# --- Clear-text exposure (hygiene) ---------------------------------------
+# Lab hosts should not be using clear-text FTP logins.
+alert tcp $HOME_NET any -> any 21 (msg:"LAB POLICY Clear-text FTP credentials observed"; \
+    content:"USER "; nocase; pcre:"/^USER /smi"; \
+    classtype:policy-violation; sid:1000040; rev:1;)

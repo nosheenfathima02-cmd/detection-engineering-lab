@@ -1,0 +1,26 @@
+title: AS-REP Roasting - TGT Without Pre-Authentication
+id: b8990c5d-afa0-495c-b171-ea856588b40a
+status: experimental
+description: |
+  Detects a Kerberos TGT issued without pre-authentication with RC4 encryption,
+  which lets an attacker crack the account's password hash offline.
+references:
+  - https://attack.mitre.org/techniques/T1558/004/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.credential-access
+  - attack.t1558.004
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4768
+    PreAuthType: '0'
+    TicketEncryptionType: '0x17'
+    Status: '0x0'
+  condition: selection
+falsepositives:
+  - Accounts deliberately configured with "Do not require Kerberos preauthentication" (fix the account instead)
+level: high

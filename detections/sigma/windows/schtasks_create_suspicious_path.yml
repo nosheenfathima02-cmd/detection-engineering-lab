@@ -1,0 +1,32 @@
+title: Scheduled Task Created Pointing to a User-Writable Path
+id: 7d988b78-9475-45a0-a62f-a1559c0acac9
+status: experimental
+description: |
+  Detects schtasks.exe creating a task whose action runs from a user-writable location,
+  a common persistence pattern for malware.
+references:
+  - https://attack.mitre.org/techniques/T1053/005/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.persistence
+  - attack.t1053.005
+logsource:
+  product: windows
+  category: process_creation
+detection:
+  selection_img:
+    Image|endswith: '\schtasks.exe'
+    CommandLine|contains: '/create'
+  selection_path:
+    CommandLine|contains:
+      - '\AppData\'
+      - '\Users\Public\'
+      - '\Temp\'
+      - '\ProgramData\'
+      - 'powershell'
+      - 'cmd /c'
+  condition: all of selection_*
+falsepositives:
+  - Software updaters that install from ProgramData (e.g. browser updaters)
+level: medium

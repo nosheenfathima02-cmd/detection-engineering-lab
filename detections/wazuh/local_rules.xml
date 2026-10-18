@@ -1,0 +1,81 @@
+<!--
+  Custom Wazuh rules for the detection lab.
+  Install: copy into /var/ossec/etc/rules/local_rules.xml on the manager, then
+           sudo systemctl restart wazuh-manager
+  Rule IDs 100100-100199 are reserved for this lab.
+  Wazuh lower-cases the first letter of Windows event field names
+  (TicketEncryptionType -> win.eventdata.ticketEncryptionType).
+-->
+<group name="detection_lab,windows,">
+
+  <!-- T1558.003 Kerberoasting: RC4 service ticket for a non-machine account -->
+  <rule id="100110" level="10">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4769$</field>
+    <field name="win.eventdata.ticketEncryptionType">^0x17$</field>
+    <field name="win.eventdata.serviceName" negate="yes">\$$|^krbtgt$</field>
+    <description>Kerberoasting: RC4 TGS requested for service $(win.eventdata.serviceName) by $(win.eventdata.targetUserName)</description>
+    <mitre>
+      <id>T1558.003</id>
+    </mitre>
+  </rule>
+
+  <!-- T1558.003 correlated: same requester asks for 5+ RC4 tickets in 2 minutes -->
+  <rule id="100111" level="13" frequency="5" timeframe="120">
+    <if_matched_sid>100110</if_matched_sid>
+    <same_field>win.eventdata.targetUserName</same_field>
+    <description>Kerberoasting burst: $(win.eventdata.targetUserName) requested 5+ RC4 service tickets in 2 minutes</description>
+    <mitre>
+      <id>T1558.003</id>
+    </mitre>
+  </rule>
+
+  <!-- T1558.004 AS-REP roasting -->
+  <rule id="100120" level="12">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4768$</field>
+    <field name="win.eventdata.preAuthType">^0$</field>
+    <description>AS-REP roasting: TGT issued without pre-authentication for $(win.eventdata.targetUserName)</description>
+    <mitre>
+      <id>T1558.004</id>
+    </mitre>
+  </rule>
+
+  <!-- T1003.006 DCSync -->
+  <rule id="100130" level="15">
+    <if_group>windows</if_group>
+    <field name="win.system.eventID">^4662$</field>
+    <field name="win.eventdata.properties">1131f6aa-9c07-11d1-f79f-00c04fc2dcd2|1131f6ad-9c07-11d1-f79f-00c04fc2dcd2|89e95b76-444d-4c62-991a-0facbeda640c</field>
+    <field name="win.eventdata.subjectUserName" negate="yes">\$$</field>
+    <description>DCSync: $(win.eventdata.subjectUserName) used directory replication rights</description>
+    <mitre>
+      <id>T1003.006</id>
+    </mitre>
+  </rule>
+
+  <!-- T1003.001 LSASS access (Sysmon Event ID 10) -->
+  <rule id="100140" level="12">
+    <if_group>windows</if_group>
+    <field name="win.system.channel">^Microsoft-Windows-Sysmon/Operational$</field>
+    <field name="win.system.eventID">^10$</field>
+    <field name="win.eventdata.targetImage" type="pcre2">(?i)\\lsass\.exe$</field>
+    <field name="win.eventdata.grantedAccess">^0x1010$|^0x1410$|^0x143a$|^0x1438$|^0x1fffff$</field>
+    <field name="win.eventdata.sourceImage" type="pcre2" negate="yes">(?i)^C:\\Windows\\System32\\|Windows Defender</field>
+    <description>Possible credential dumping: $(win.eventdata.sourceImage) opened LSASS with $(win.eventdata.grantedAccess)</description>
+    <mitre>
+      <id>T1003.001</id>
+    </mitre>
+  </rule>
+
+  <!-- T1110.003 Password spray: 10 failed logons for different users from one IP in 5 min -->
+  <rule id="100150" level="12" frequency="10" timeframe="300">
+    <if_matched_sid>60122</if_matched_sid>
+    <same_field>win.eventdata.ipAddress</same_field>
+    <different_field>win.eventdata.targetUserName</different_field>
+    <description>Password spray: 10+ accounts failed logon from $(win.eventdata.ipAddress) in 5 minutes</description>
+    <mitre>
+      <id>T1110.003</id>
+    </mitre>
+  </rule>
+
+</group>

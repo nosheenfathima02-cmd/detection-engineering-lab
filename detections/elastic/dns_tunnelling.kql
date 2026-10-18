@@ -1,0 +1,7 @@
+// CD-06 equivalent - DNS tunnelling candidate (T1071.004)
+// Long query names are the cheap, reliable signal; confirm with entropy/volume in the alert review.
+// Create as a Custom query or Threshold rule grouped by source.ip + dns.question.registered_domain.
+event.category : "network" and dns.question.name : *
+  and source.ip : "10.10.10.0/24"
+  and dns.question.name.length >= 50
+  and not dns.question.registered_domain : ("microsoft.com" or "windowsupdate.com" or "office.com")

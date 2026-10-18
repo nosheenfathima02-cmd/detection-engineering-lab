@@ -1,0 +1,32 @@
+title: PsExec-Style Remote Service Installation
+id: 3020bfd0-bd5a-45e4-8073-06d2ca37969b
+status: experimental
+description: |
+  Detects installation of the PSEXESVC service (or a service binary dropped in ADMIN$),
+  which indicates remote execution via PsExec or Impacket psexec.
+references:
+  - https://attack.mitre.org/techniques/T1021/002/
+  - https://attack.mitre.org/techniques/T1569/002/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.lateral-movement
+  - attack.t1021.002
+  - attack.execution
+  - attack.t1569.002
+logsource:
+  product: windows
+  service: system
+detection:
+  selection_psexec:
+    Provider_Name: 'Service Control Manager'
+    EventID: 7045
+    ServiceName: 'PSEXESVC'
+  selection_admin_share:
+    Provider_Name: 'Service Control Manager'
+    EventID: 7045
+    ImagePath|contains: '\ADMIN$\'
+  condition: 1 of selection_*
+falsepositives:
+  - IT administrators using PsExec legitimately (confirm with change tickets)
+level: high

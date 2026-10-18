@@ -1,0 +1,34 @@
+title: LSASS Memory Access With Credential-Dumping Rights
+id: 37b31c3c-46d6-44f7-b100-50d95c95ee08
+status: experimental
+description: |
+  Detects a process opening a handle to lsass.exe with access rights commonly used
+  by credential dumpers (Mimikatz, procdump, comsvcs.dll MiniDump).
+references:
+  - https://attack.mitre.org/techniques/T1003/001/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.credential-access
+  - attack.t1003.001
+logsource:
+  product: windows
+  category: process_access   # Sysmon Event ID 10
+detection:
+  selection:
+    TargetImage|endswith: '\lsass.exe'
+    GrantedAccess:
+      - '0x1010'
+      - '0x1410'
+      - '0x143a'
+      - '0x1438'
+      - '0x1fffff'
+  filter_system:
+    SourceImage|startswith:
+      - 'C:\Windows\System32\'
+      - 'C:\Program Files\Windows Defender\'
+      - 'C:\ProgramData\Microsoft\Windows Defender\'
+  condition: selection and not filter_system
+falsepositives:
+  - EDR and backup agents (add their paths to the filter after review)
+level: high

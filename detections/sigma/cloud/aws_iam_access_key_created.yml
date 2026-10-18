@@ -1,0 +1,28 @@
+title: AWS IAM Access Key Created for Another User
+id: 5f0b8753-4585-4e4c-8816-cfe69755c1ee
+status: experimental
+description: |
+  Detects one identity creating an access key for a different IAM user, a way attackers
+  keep persistent programmatic access after compromising an admin.
+references:
+  - https://attack.mitre.org/techniques/T1098/001/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.persistence
+  - attack.t1098.001
+logsource:
+  product: aws
+  service: cloudtrail
+detection:
+  selection:
+    eventSource: 'iam.amazonaws.com'
+    eventName: 'CreateAccessKey'
+  filter_self:
+    userIdentity.userName|fieldref: requestParameters.userName
+  filter_no_target:   # no userName parameter means the caller made a key for itself
+    requestParameters.userName: null
+  condition: selection and not 1 of filter_*
+falsepositives:
+  - Admins provisioning keys for service accounts (track with tickets)
+level: medium

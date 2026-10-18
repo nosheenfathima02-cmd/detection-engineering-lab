@@ -1,0 +1,87 @@
+``` ============================================================================
+    Correlated detections (Splunk SPL)
+    These go beyond 1:1 alerting: each one only fires when several events line up.
+    Assumed indexes: wineventlog (Security/System), sysmon, zeek, aws_cloudtrail.
+    Field names follow the Splunk Add-on for Microsoft Windows; adjust to your TA.
+    ============================================================================ ```
+
+``` ---------------------------------------------------------------------------
+    CD-01  Local admin added -> remote logon -> service install, same host, 10 min
+    ATT&CK: T1098, T1078, T1021.002, T1569.002
+    Idea:   one admin grant on its own is routine; the full chain on one host
+            within 10 minutes looks like an attacker staging lateral movement.
+    --------------------------------------------------------------------------- ```
+index=wineventlog ((sourcetype="WinEventLog:Security" (EventCode=4732 Group_Name="Administrators") OR (EventCode=4624 Logon_Type=3))
+                   OR (sourcetype="WinEventLog:System" EventCode=7045))
+| eval stage=case(EventCode=4732,"1_admin_added", EventCode=4624,"2_network_logon", EventCode=7045,"3_service_install")
+| bin _time span=10m
+| stats dc(stage) AS stages values(stage) AS stage_list values(user) AS users values(Service_Name) AS services min(_time) AS first_seen max(_time) AS last_seen BY host _time
+| where stages=3
+| eval first_seen=strftime(first_seen,"%F %T"), last_seen=strftime(last_seen,"%F %T")
+| table host first_seen last_seen stage_list users services
+
+
+``` ---------------------------------------------------------------------------
+    CD-02  Password spraying: one source, many accounts, few attempts each
+    ATT&CK: T1110.003
+    Tuning: spraying = many users x 1-2 tries; brute force = 1 user x many tries.
+    --------------------------------------------------------------------------- ```
+index=wineventlog sourcetype="WinEventLog:Security" EventCode=4625
+| bin _time span=15m
+| stats dc(user) AS distinct_users count AS failures values(user) AS sample_users BY src_ip _time
+| eval tries_per_user=round(failures/distinct_users,1)
+| where distinct_users>=10 AND tries_per_user<=3
+| sort - distinct_users
+
+
+``` ---------------------------------------------------------------------------
+    CD-03  Successful logon after a spray from the same source (spray hit)
+    ATT&CK: T1110.003 -> T1078
+    --------------------------------------------------------------------------- ```
+index=wineventlog sourcetype="WinEventLog:Security" (EventCode=4625 OR EventCode=4624) src_ip=*
+| bin _time span=30m
+| stats dc(eval(if(EventCode=4625,user,null()))) AS failed_users
+        values(eval(if(EventCode=4624,user,null()))) AS success_users BY src_ip _time
+| where failed_users>=10 AND isnotnull(success_users)
+
+
+``` ---------------------------------------------------------------------------
+    CD-04  Encoded PowerShell followed by an outbound connection from the same process
+    ATT&CK: T1059.001 -> T1105 / T1071
+    --------------------------------------------------------------------------- ```
+index=sysmon (EventCode=1 Image="*\\powershell.exe" (CommandLine="* -enc*" OR CommandLine="* -EncodedCommand*"))
+            OR (EventCode=3 Image="*\\powershell.exe" Initiated=true)
+| stats values(EventCode) AS codes values(CommandLine) AS cmd values(DestinationIp) AS dest_ip values(DestinationPort) AS dest_port BY host ProcessGuid
+| where mvcount(codes)=2
+| table host ProcessGuid cmd dest_ip dest_port
+
+
+``` ---------------------------------------------------------------------------
+    CD-05  C2 beaconing: regular connection intervals to one destination (Zeek conn.log)
+    ATT&CK: T1071.001
+    Idea:   humans browse irregularly; implants call home on a timer (+ jitter).
+    --------------------------------------------------------------------------- ```
+index=zeek sourcetype=zeek:conn
+| sort 0 id.orig_h id.resp_h _time
+| streamstats current=f last(_time) AS prev_time BY id.orig_h id.resp_h
+| eval gap=_time-prev_time
+| stats count AS connections avg(gap) AS avg_gap stdev(gap) AS stdev_gap BY id.orig_h id.resp_h
+| where connections>=20 AND avg_gap>10
+| eval jitter_ratio=round(stdev_gap/avg_gap,3)
+| where jitter_ratio<0.15
+| sort jitter_ratio
+
+
+``` ---------------------------------------------------------------------------
+    CD-06  DNS tunnelling: long, high-entropy subdomains to one parent domain
+    ATT&CK: T1071.004, T1048
+    Requires: URL Toolbox app (ut_parse_extended, ut_shannon)
+    --------------------------------------------------------------------------- ```
+index=zeek sourcetype=zeek:dns
+| eval list="mozilla"
+| `ut_parse_extended(query, list)`
+| `ut_shannon(ut_subdomain)`
+| where len(ut_subdomain)>=40 AND ut_shannon>=3.8
+| stats count AS queries dc(ut_subdomain) AS unique_subdomains avg(ut_shannon) AS avg_entropy BY id.orig_h ut_domain
+| where unique_subdomains>=25
+| sort - unique_subdomains

@@ -1,0 +1,11 @@
+/* CD-04 equivalent - encoded PowerShell followed by an outbound connection (T1059.001 -> T1105)
+   Event correlation (EQL) rule. Fires only when the same PowerShell process that ran an encoded
+   command then makes a network connection, within 1 minute. */
+sequence by process.entity_id with maxspan=1m
+  [ process where event.type == "start"
+      and process.name : ("powershell.exe", "pwsh.exe")
+      and process.command_line : ("*-enc *", "*-EncodedCommand*", "*-ec *") ]
+  [ network where event.type == "start"
+      and process.name : ("powershell.exe", "pwsh.exe")
+      and network.direction : "egress"
+      and not destination.ip : ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16") ]

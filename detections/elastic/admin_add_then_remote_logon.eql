@@ -1,0 +1,9 @@
+/* CD-01 equivalent - lateral movement chain (T1098 -> T1021.002)
+   Event correlation (EQL) rule. Fires when, on the same host within 10 minutes:
+   an account is added to a group, a network logon happens, and a service is installed.
+   Field names follow ECS as populated by Winlogbeat's Security channel. */
+sequence by host.id with maxspan=10m
+  [ iam where event.action : "added-member-to-group" and winlog.event_id == "4732" ]
+  [ authentication where event.action : "logged-in" and winlog.event_id == "4624"
+      and winlog.event_data.LogonType == "3" ]
+  [ any where winlog.event_id == "7045" ]

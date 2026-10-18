@@ -1,0 +1,8 @@
+// CD-05 equivalent - C2 beaconing candidate (T1071.001)
+// Outbound network connections from the lab to an external host.
+// Create as a Threshold rule: group by source.ip and destination.ip, threshold >= 20,
+// over a 5-minute interval, then inspect the alert for regular intervals (low jitter).
+event.category : "network" and network.direction : "egress"
+  and source.ip : "10.10.10.0/24"
+  and not destination.ip : ("10.0.0.0/8" or "172.16.0.0/12" or "192.168.0.0/16")
+  and destination.port : (80 or 443 or 8080 or 8443 or 53)

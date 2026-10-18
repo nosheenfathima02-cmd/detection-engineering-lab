@@ -1,0 +1,25 @@
+title: Account Added to Local Administrators Group
+id: ed72a29c-2087-44b5-917d-2d654c070f6a
+status: experimental
+description: |
+  Detects a member being added to the built-in local Administrators group (S-1-5-32-544).
+  Used as the first stage of the correlated lateral-movement detection in detections/splunk.
+references:
+  - https://attack.mitre.org/techniques/T1098/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.persistence
+  - attack.privilege-escalation
+  - attack.t1098
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4732
+    TargetSid: 'S-1-5-32-544'
+  condition: selection
+falsepositives:
+  - Planned admin changes by the IT team
+level: medium

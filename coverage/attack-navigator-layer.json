@@ -1,0 +1,31 @@
+{
+  "name": "Detection Engineering Lab - Coverage",
+  "versions": { "attack": "16", "navigator": "5.1.0", "layer": "4.5" },
+  "domain": "enterprise-attack",
+  "description": "Techniques with at least one detection in this repo. Score 1 = rule written, 2 = rule validated by emulation (update after testing).",
+  "gradient": { "colors": ["#ffffffff", "#9ecae1ff", "#3182bdff"], "minValue": 0, "maxValue": 2 },
+  "legendItems": [
+    { "label": "Rule written", "color": "#9ecae1ff" },
+    { "label": "Validated by emulation", "color": "#3182bdff" }
+  ],
+  "techniques": [
+    { "techniqueID": "T1003.001", "score": 1, "comment": "SIG-01, Wazuh 100140" },
+    { "techniqueID": "T1003.006", "score": 1, "comment": "SIG-04, Wazuh 100130" },
+    { "techniqueID": "T1558.003", "score": 1, "comment": "SIG-02, Wazuh 100110/100111" },
+    { "techniqueID": "T1558.004", "score": 1, "comment": "SIG-03, Wazuh 100120" },
+    { "techniqueID": "T1059.001", "score": 1, "comment": "SIG-05, CD-04" },
+    { "techniqueID": "T1027", "score": 1, "comment": "SIG-05" },
+    { "techniqueID": "T1053.005", "score": 1, "comment": "SIG-06" },
+    { "techniqueID": "T1021.002", "score": 1, "comment": "SIG-07, CD-01" },
+    { "techniqueID": "T1569.002", "score": 1, "comment": "SIG-07, CD-01" },
+    { "techniqueID": "T1098", "score": 1, "comment": "SIG-08, CD-01" },
+    { "techniqueID": "T1110.003", "score": 1, "comment": "CD-02, CD-03, Wazuh 100150" },
+    { "techniqueID": "T1078", "score": 1, "comment": "CD-03" },
+    { "techniqueID": "T1105", "score": 1, "comment": "CD-04" },
+    { "techniqueID": "T1071.001", "score": 1, "comment": "CD-05" },
+    { "techniqueID": "T1071.004", "score": 1, "comment": "CD-06" },
+    { "techniqueID": "T1078.004", "score": 1, "comment": "SIG-09" },
+    { "techniqueID": "T1562.008", "score": 1, "comment": "SIG-10" },
+    { "techniqueID": "T1098.001", "score": 1, "comment": "SIG-11" }
+  ]
+}

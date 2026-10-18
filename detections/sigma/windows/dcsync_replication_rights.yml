@@ -1,0 +1,30 @@
+title: DCSync - Directory Replication Requested by Non-DC Account
+id: 87ec8abc-b65e-4dfd-83a6-7a7d018fcc67
+status: experimental
+description: |
+  Detects use of directory replication rights (DS-Replication-Get-Changes / -All) by an
+  account that is not a domain controller, the signature of a DCSync attack.
+  Requires "Audit Directory Service Access" with auditing on the domain object.
+references:
+  - https://attack.mitre.org/techniques/T1003/006/
+author: Nousheen Fathima
+date: 2026-10-17
+tags:
+  - attack.credential-access
+  - attack.t1003.006
+logsource:
+  product: windows
+  service: security
+detection:
+  selection:
+    EventID: 4662
+    Properties|contains:
+      - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'
+      - '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2'
+      - '89e95b76-444d-4c62-991a-0facbeda640c'
+  filter_machine_accounts:
+    SubjectUserName|endswith: '$'
+  condition: selection and not filter_machine_accounts
+falsepositives:
+  - Azure AD Connect / Entra Connect sync account (allow-list it by name)
+level: critical
